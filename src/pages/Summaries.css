@@ -1,0 +1,264 @@
+.summaries-page {
+  padding: 1rem 1.5rem;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.summaries-header {
+  margin-bottom: 1.5rem;
+}
+
+.summaries-header h1 {
+  font-size: 1.5rem;
+  color: #1a2f1a;
+  margin: 0 0 0.25rem 0;
+}
+
+.summaries-header p {
+  color: #5a6b5a;
+  margin: 0;
+  font-size: 0.95rem;
+}
+
+.summary-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+
+.summary-card {
+  background: #fff;
+  border: 1px solid #d4e0d4;
+  border-radius: 8px;
+  padding: 1.25rem;
+  text-align: center;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+}
+
+.summary-number {
+  display: block;
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: #2d4a2d;
+}
+
+.summary-label {
+  display: block;
+  font-size: 0.85rem;
+  color: #5a6b5a;
+  margin-top: 0.25rem;
+}
+
+.summary-section {
+  margin-bottom: 2rem;
+}
+
+.summary-section h2 {
+  font-size: 1.1rem;
+  color: #2d4a2d;
+  margin: 0 0 1rem 0;
+}
+
+.summary-table-wrap {
+  overflow-x: auto;
+  margin-bottom: 1rem;
+  border: 1px solid #e0e8e0;
+  border-radius: 8px;
+  max-width: 400px;
+}
+
+.summary-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.summary-table th,
+.summary-table td {
+  padding: 0.5rem 0.75rem;
+  text-align: left;
+  border-bottom: 1px solid #e8efe8;
+}
+
+.summary-table th {
+  background: #f0f5f0;
+  color: #2d4a2d;
+  font-weight: 600;
+}
+
+.chart-wrap {
+  background: #fff;
+  border: 1px solid #e0e8e0;
+  border-radius: 8px;
+  padding: 1rem;
+  max-width: 600px;
+}
+
+.pie-wrap {
+  max-width: 450px;
+}
+
+.summary-strip {
+  display: grid;
+  grid-template-columns: 220px;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.summary-box {
+  border: 1px solid #c7c2ce;
+  background: #f8f7fa;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.summary-box h2 {
+  margin: 0;
+  padding: 0.55rem 0.8rem;
+  background: #7f8f7d;
+  color: #fff;
+  font-size: 0.95rem;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.summary-line {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.35rem 0.8rem;
+  border-top: 1px solid #e1dde7;
+  font-size: 0.95rem;
+}
+
+.summary-line.total {
+  font-weight: 700;
+}
+
+.summary-line.danger {
+  color: #c42222;
+}
+
+.summary-table-wrap.full {
+  overflow-x: auto;
+  border: 1px solid #c7c2ce;
+  border-radius: 8px;
+  background: #fff;
+  max-width: 100%;
+}
+
+.summary-table.matrix {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 1080px;
+  font-size: 0.92rem;
+}
+
+.summary-table.matrix th,
+.summary-table.matrix td {
+  border: 1px solid #d4cfdb;
+  padding: 0.38rem 0.5rem;
+}
+
+.summary-table.matrix thead th {
+  background: #c18b9a;
+  color: #fff;
+  text-align: center;
+  font-weight: 700;
+}
+
+.summary-table.matrix tbody td {
+  text-align: right;
+}
+
+.summary-table.matrix tbody td:first-child {
+  text-align: left;
+  white-space: nowrap;
+}
+
+.summary-table.matrix .accent {
+  background: #de7e74;
+  color: #fff;
+  font-weight: 700;
+}
+
+.summary-table.matrix .total-row td {
+  background: #b98596;
+  color: #fff;
+  font-weight: 700;
+}
+
+.summary-table.matrix .total-row td.accent {
+  background: #d86f64;
+}
+
+.figure-link {
+  display: inline-block;
+  border: 1px solid #d8e2d8;
+  border-radius: 10px;
+  overflow: hidden;
+  max-width: 760px;
+  background: #fff;
+}
+
+.map-wrap {
+  width: 100%;
+  max-width: 760px;
+  height: 460px;
+  border: 1px solid #d8e2d8;
+  border-radius: 10px;
+  background: #fff;
+  overflow: auto;
+}
+
+.summary-map {
+  width: 100%;
+  height: 100%;
+}
+
+.summary-map.leaflet-container {
+  min-height: 460px;
+  background: #dce8f4;
+}
+
+.leaflet-container img {
+  max-width: none !important;
+}
+
+.figure-error {
+  color: #5e6d5e;
+  font-size: 0.9rem;
+}
+
+.figure-data {
+  margin-top: 0.75rem;
+  padding: 0.7rem 0.9rem;
+  border: 1px solid #d8e2d8;
+  border-radius: 8px;
+  max-width: 420px;
+  background: #fff;
+}
+
+.figure-data h3 {
+  margin: 0 0 0.4rem;
+  font-size: 1rem;
+  color: #1a2f1a;
+}
+
+.figure-data p {
+  margin: 0.2rem 0;
+  font-size: 0.92rem;
+}
+
+.figure-note {
+  margin-top: 0.45rem;
+  color: #5e6d5e;
+  font-size: 0.82rem;
+}
+
+@media (max-width: 720px) {
+  .summaries-page {
+    padding: 0.8rem;
+  }
+}

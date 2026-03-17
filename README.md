@@ -1,6 +1,25 @@
-# Getting Started with Create React App
+# Cordillera Ancestral Domains
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+React + Firebase app for managing Cordillera Ancestral Domain (CADT) records: form entry, data sheet (search/filter/hide columns), summaries (charts), and login.
+
+## Firebase setup
+
+1. Create a project in [Firebase Console](https://console.firebase.google.com).
+2. Enable **Authentication** → Sign-in method → **Email/Password**.
+3. Create a **Firestore Database** and deploy rules from this repo:
+   - In Firestore → Rules, paste the contents of `firestore.rules` (or deploy with Firebase CLI).
+4. Copy `.env.example` to `.env` and fill in your config from Project settings → General → Your apps → SDK setup:
+
+```
+REACT_APP_FIREBASE_API_KEY=...
+REACT_APP_FIREBASE_AUTH_DOMAIN=your-project.firebaseapp.com
+REACT_APP_FIREBASE_PROJECT_ID=your-project
+REACT_APP_FIREBASE_STORAGE_BUCKET=your-project.appspot.com
+REACT_APP_FIREBASE_MESSAGING_SENDER_ID=...
+REACT_APP_FIREBASE_APP_ID=...
+```
+
+5. Run the app and use **Sign up** to create the first user, then sign in.
 
 ## Available Scripts
 

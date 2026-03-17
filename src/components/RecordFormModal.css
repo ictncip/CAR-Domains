@@ -1,0 +1,130 @@
+.record-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 1rem;
+}
+
+.record-modal {
+  background: #fff;
+  border-radius: 8px;
+  max-width: 600px;
+  width: 100%;
+  max-height: 90vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+}
+
+.record-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid #e0e8e0;
+}
+
+.record-modal-header h2 {
+  margin: 0;
+  font-size: 1.2rem;
+  color: #1a2f1a;
+}
+
+.record-modal-close {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  cursor: pointer;
+  color: #5a6b5a;
+  line-height: 1;
+  padding: 0 0.25rem;
+}
+
+.record-modal-close:hover {
+  color: #1a2f1a;
+}
+
+.record-modal-error {
+  background: #f8d7da;
+  color: #721c24;
+  padding: 0.5rem 1.25rem;
+  font-size: 0.9rem;
+}
+
+.record-modal-form {
+  overflow-y: auto;
+  padding: 1rem 1.25rem;
+}
+
+.record-modal-fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 0.75rem 1rem;
+}
+
+.record-modal-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.record-modal-label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #2d4a2d;
+}
+
+.record-modal-field input,
+.record-modal-field select,
+.record-modal-field textarea {
+  padding: 0.4rem 0.5rem;
+  border: 1px solid #b8c9b8;
+  border-radius: 4px;
+  font-size: 0.9rem;
+}
+
+.record-modal-field input:read-only,
+.record-modal-field textarea:read-only {
+  background: #f5f8f5;
+  cursor: default;
+}
+
+.record-modal-actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid #e0e8e0;
+}
+
+.record-modal-actions .btn {
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+}
+
+.record-modal-actions .btn-primary {
+  background: #2d4a2d;
+  color: white;
+}
+
+.record-modal-actions .btn-primary:hover:not(:disabled) {
+  background: #3d6b3d;
+}
+
+.record-modal-actions .btn-secondary {
+  background: #e8efe8;
+  color: #2d4a2d;
+}
+
+.record-modal-actions .btn-secondary:hover {
+  background: #d4e0d4;
+}
