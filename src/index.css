@@ -9,7 +9,11 @@ body {
     sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  background: #f0f5f0;
+  background: #f0f5f0 url('./photos/background.png') center center / cover no-repeat fixed;
+}
+
+#root {
+  min-height: 100vh;
 }
 
 code {

@@ -1,8 +1,12 @@
-import React, { useState, useMemo, useRef } from 'react';
+import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import * as XLSX from 'xlsx';
 import { useData } from '../context/DataContext';
 import { CAR_PROVINCES } from '../constants';
 import RecordFormModal from '../components/RecordFormModal';
+import excelExportIcon from '../photos/excel_export.png';
+import excelImportIcon from '../photos/excel_import.png';
+import filterDataIcon from '../photos/filter_data.png';
+import filterLetterIcon from '../photos/filter_letter.png';
 import './DataSheet.css';
 
 const IconView = () => (
@@ -17,7 +21,6 @@ const IconEdit = () => (
     <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
   </svg>
 );
-
 // Map Excel header text (normalized) to our record keys
 const HEADER_TO_KEY = {
   'no': null,
@@ -177,6 +180,13 @@ function parseTextCell(val) {
   return String(val).trim();
 }
 
+function getColumnValue(row, col) {
+  if (!col) return '';
+  if (col.key === 'no') return row?._rowNo ?? '';
+  const value = col.getValue ? col.getValue(row, 0) : row?.[col.key];
+  return value ?? '';
+}
+
 const COLUMNS = [
   { key: 'no', label: 'No', width: '50px', getValue: (r) => r._rowNo ?? '—' },
   { key: 'province', label: 'Province' },
@@ -219,7 +229,10 @@ const COLUMNS = [
   { key: 'withIndicativeMap', label: 'With Indicative Map', getValue: (r) => r.withIndicativeMap ? 'Yes' : 'No' },
 ];
 
-const defaultVisible = COLUMNS.reduce((acc, c) => ({ ...acc, [c.key]: true }), {});
+const defaultVisible = COLUMNS.reduce(
+  (acc, c) => ({ ...acc, [c.key]: c.key === 'remarks' ? false : true }),
+  {}
+);
 
 const BASIC_INFO_KEYS = new Set([
   'no',
@@ -355,10 +368,24 @@ function detectHeaderRowIndex(rows) {
 export default function DataSheet() {
   const { records, dataLoading, dataError, addRecords, deleteRecords } = useData();
   const fileInputRef = useRef(null);
+  const sortPickerRef = useRef(null);
+  const filterPickerRef = useRef(null);
+  const columnPickerRef = useRef(null);
+  const columnPickerMenuRef = useRef(null);
   const [provinceFilter, setProvinceFilter] = useState('all');
   const [search, setSearch] = useState('');
+  const [sortKey, setSortKey] = useState('');
+  const [sortDirection, setSortDirection] = useState('');
+  const [showSortPicker, setShowSortPicker] = useState(false);
+  const [showFilterPicker, setShowFilterPicker] = useState(false);
+  const [valueFilterKey, setValueFilterKey] = useState('');
+  const [valueFilter, setValueFilter] = useState([]);
+  const [draftValueFilterKey, setDraftValueFilterKey] = useState('');
+  const [draftValueFilter, setDraftValueFilter] = useState([]);
+  const [valueFilterSearch, setValueFilterSearch] = useState('');
   const [visibleCols, setVisibleCols] = useState(defaultVisible);
   const [showColPicker, setShowColPicker] = useState(false);
+  const [columnPickerPos, setColumnPickerPos] = useState({ top: 0, left: 0 });
   const [uploading, setUploading] = useState(false);
   const [uploadResult, setUploadResult] = useState(null);
   const [selectedIds, setSelectedIds] = useState(new Set());
@@ -367,26 +394,75 @@ export default function DataSheet() {
   const [deleteConfirm, setDeleteConfirm] = useState(null);
   const [deleting, setDeleting] = useState(false);
 
+  const filterableColumns = useMemo(
+    () => COLUMNS.filter((col) => col.key !== 'no'),
+    []
+  );
+
   const filteredByProvince = useMemo(() => {
     if (provinceFilter === 'all') return records;
     return records.filter((r) => r.province === provinceFilter);
   }, [records, provinceFilter]);
 
-  const withRowNo = useMemo(() => {
-    if (provinceFilter === 'all') return filteredByProvince.map((r, i) => ({ ...r, _rowNo: i + 1 }));
-    return filteredByProvince.map((r, i) => ({ ...r, _rowNo: i + 1 }));
-  }, [filteredByProvince, provinceFilter]);
+  const valueFilterOptions = useMemo(() => {
+    if (!draftValueFilterKey) return [];
+    const col = COLUMNS.find((item) => item.key === draftValueFilterKey);
+    if (!col) return [];
+    const values = Array.from(
+      new Set(
+        filteredByProvince
+          .map((row) => String(getColumnValue(row, col)).trim())
+          .filter((value) => value !== '')
+      )
+    );
+    return values.sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' }));
+  }, [draftValueFilterKey, filteredByProvince]);
 
-  const filtered = useMemo(() => {
-    if (!search.trim()) return withRowNo;
+  const visibleValueFilterOptions = useMemo(() => {
+    if (!valueFilterSearch.trim()) return valueFilterOptions;
+    const query = valueFilterSearch.trim().toLowerCase();
+    return valueFilterOptions.filter((option) =>
+      option.toLowerCase().includes(query)
+    );
+  }, [valueFilterOptions, valueFilterSearch]);
+
+  const filteredByValue = useMemo(() => {
+    if (!valueFilterKey || valueFilter.length === 0) return filteredByProvince;
+    const col = COLUMNS.find((item) => item.key === valueFilterKey);
+    if (!col) return filteredByProvince;
+    return filteredByProvince.filter((row) =>
+      valueFilter.includes(String(getColumnValue(row, col)).trim())
+    );
+  }, [filteredByProvince, valueFilter, valueFilterKey]);
+
+  const searched = useMemo(() => {
+    if (!search.trim()) return filteredByValue;
     const q = search.toLowerCase();
-    return withRowNo.filter((r) =>
+    return filteredByValue.filter((r) =>
       COLUMNS.some((col) => {
-        const val = col.getValue ? col.getValue(r, r._rowNo - 1) : r[col.key];
+        const val = getColumnValue(r, col);
         return String(val ?? '').toLowerCase().includes(q);
       })
     );
-  }, [withRowNo, search]);
+  }, [filteredByValue, search]);
+
+  const sorted = useMemo(() => {
+    if (!sortKey || !sortDirection) return searched;
+    const col = COLUMNS.find((item) => item.key === sortKey);
+    if (!col) return searched;
+    const direction = sortDirection === 'desc' ? -1 : 1;
+
+    return [...searched].sort((a, b) => {
+      const aValue = String(getColumnValue(a, col)).trim();
+      const bValue = String(getColumnValue(b, col)).trim();
+      return aValue.localeCompare(bValue, undefined, { numeric: true, sensitivity: 'base' }) * direction;
+    });
+  }, [searched, sortDirection, sortKey]);
+
+  const filtered = useMemo(
+    () => sorted.map((r, i) => ({ ...r, _rowNo: i + 1 })),
+    [sorted]
+  );
 
   const toggleCol = (key) => {
     setVisibleCols((prev) => ({ ...prev, [key]: !prev[key] }));
@@ -561,14 +637,106 @@ export default function DataSheet() {
   };
 
   const triggerFileInput = () => fileInputRef.current?.click();
+  const allVisibleFilterValuesSelected =
+    visibleValueFilterOptions.length > 0 &&
+    visibleValueFilterOptions.every((option) => draftValueFilter.includes(option));
+
+  const openFilterPicker = () => {
+    const nextOpen = !showFilterPicker;
+    if (nextOpen) {
+      setDraftValueFilterKey(valueFilterKey);
+      setDraftValueFilter(valueFilter);
+      setValueFilterSearch('');
+    }
+    setShowFilterPicker(nextOpen);
+    setShowSortPicker(false);
+    setShowColPicker(false);
+  };
+
+  const cancelFilterPicker = useCallback(() => {
+    setDraftValueFilterKey(valueFilterKey);
+    setDraftValueFilter(valueFilter);
+    setValueFilterSearch('');
+    setShowFilterPicker(false);
+  }, [valueFilter, valueFilterKey]);
+
+  const applyFilterPicker = () => {
+    setValueFilterKey(draftValueFilterKey);
+    setValueFilter(draftValueFilter);
+    setShowFilterPicker(false);
+  };
+
+  const toggleAllVisibleFilterValues = () => {
+    if (allVisibleFilterValuesSelected) {
+      setDraftValueFilter((prev) =>
+        prev.filter((value) => !visibleValueFilterOptions.includes(value))
+      );
+      return;
+    }
+
+    setDraftValueFilter((prev) => {
+      const next = new Set(prev);
+      visibleValueFilterOptions.forEach((value) => next.add(value));
+      return Array.from(next);
+    });
+  };
+
+  const updateColumnPickerPosition = useCallback(() => {
+    if (!columnPickerRef.current) return;
+
+    const rect = columnPickerRef.current.getBoundingClientRect();
+    const menuWidth = 220;
+    const viewportPadding = 12;
+    const left = Math.max(
+      viewportPadding,
+      Math.min(rect.right - menuWidth, window.innerWidth - menuWidth - viewportPadding)
+    );
+
+    setColumnPickerPos({
+      top: rect.bottom + 8,
+      left,
+    });
+  }, []);
+
+  useEffect(() => {
+    const handlePointerDown = (event) => {
+      const target = event.target;
+
+      if (showSortPicker && sortPickerRef.current && !sortPickerRef.current.contains(target)) {
+        setShowSortPicker(false);
+      }
+
+      if (showFilterPicker && filterPickerRef.current && !filterPickerRef.current.contains(target)) {
+        cancelFilterPicker();
+      }
+
+      const insideColumnTrigger = columnPickerRef.current?.contains(target);
+      const insideColumnMenu = columnPickerMenuRef.current?.contains(target);
+      if (showColPicker && !insideColumnTrigger && !insideColumnMenu) {
+        setShowColPicker(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handlePointerDown);
+    return () => document.removeEventListener('mousedown', handlePointerDown);
+  }, [cancelFilterPicker, showColPicker, showFilterPicker, showSortPicker]);
+
+  useEffect(() => {
+    if (!showColPicker) return undefined;
+
+    updateColumnPickerPosition();
+    const handlePositionChange = () => updateColumnPickerPosition();
+
+    window.addEventListener('resize', handlePositionChange);
+    window.addEventListener('scroll', handlePositionChange, true);
+    return () => {
+      window.removeEventListener('resize', handlePositionChange);
+      window.removeEventListener('scroll', handlePositionChange, true);
+    };
+  }, [showColPicker, updateColumnPickerPosition]);
 
   return (
     <div className="data-sheet-page">
-      <header className="data-sheet-header">
-        <h1>Ancestral Domains Data</h1>
-        <p>View and filter records. No. column is per selected province.</p>
-      </header>
-
       {dataError && (
         <div className="data-sheet-error">{dataError}</div>
       )}
@@ -576,36 +744,21 @@ export default function DataSheet() {
         <p className="data-sheet-loading">Loading records…</p>
       )}
 
-      <div className="excel-actions">
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept=".xlsx,.xls"
-          onChange={handleUpload}
-          style={{ display: 'none' }}
-        />
-        <button type="button" className="btn btn-excel" onClick={triggerFileInput} disabled={uploading}>
-          {uploading ? 'Uploading…' : 'Upload from Excel'}
-        </button>
-        <button type="button" className="btn btn-excel" onClick={handleExport} disabled={filtered.length === 0}>
-          Export to Excel
-        </button>
-        {selectedCount > 0 && (
-          <button
-            type="button"
-            className="btn btn-delete"
-            onClick={handleBulkDeleteClick}
-          >
-            Delete selected ({selectedCount})
-          </button>
-        )}
-      </div>
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept=".xlsx,.xls"
+        onChange={handleUpload}
+        style={{ display: 'none' }}
+      />
+
       {uploadResult && (
         <div className={uploadResult.ok ? 'upload-success' : 'data-sheet-error'}>
           {uploadResult.ok ? `Uploaded ${uploadResult.count} record(s).` : uploadResult.message}
         </div>
       )}
 
+      <div className="data-sheet-toolbar-scroll">
       <div className="data-sheet-toolbar">
         <div className="toolbar-group">
           <label>Province</label>
@@ -624,46 +777,287 @@ export default function DataSheet() {
                 className={provinceFilter === p ? 'active' : ''}
                 onClick={() => setProvinceFilter(p)}
               >
-                {p}
+                {p === 'Mountain Province' ? 'Mt.Province' : p}
               </button>
             ))}
           </div>
+          <div className="toolbar-group search-group">
+            <input
+              type="text"
+              placeholder="Search across all columns..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="sheet-search"
+            />
+          </div>
         </div>
-        <div className="toolbar-group search-group">
-          <label>Search</label>
-          <input
-            type="text"
-            placeholder="Search across all columns..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="sheet-search"
-          />
+        <div className="toolbar-right">
+        <div className="toolbar-group sheet-actions-group">
+          <div className="sheet-actions">
+            <div className="toolbar-spreadsheet-group">
+              <button
+                type="button"
+                className="toolbar-menu-trigger import-trigger"
+                onClick={triggerFileInput}
+                disabled={uploading}
+                aria-label={uploading ? 'Importing from Excel' : 'Import from Excel'}
+                title={uploading ? 'Importing from Excel' : 'Import from Excel'}
+              >
+                <img src={excelImportIcon} alt="" className="toolbar-label-icon" />
+                <span className="menu-trigger-label">
+                  <span className="menu-trigger-text">{uploading ? 'Importing…' : 'Import'}</span>
+                </span>
+              </button>
+              <button
+                type="button"
+                className="toolbar-menu-trigger export-trigger"
+                onClick={handleExport}
+                disabled={filtered.length === 0}
+                aria-label="Export to Excel"
+                title="Export to Excel"
+              >
+                <img src={excelExportIcon} alt="" className="toolbar-label-icon" />
+                <span className="menu-trigger-label">
+                  <span className="menu-trigger-text">Export</span>
+                </span>
+              </button>
+              <div className="toolbar-spreadsheet-title">Spreadsheet</div>
+            </div>
+            {selectedCount > 0 && (
+              <button
+                type="button"
+                className="btn btn-delete"
+                onClick={handleBulkDeleteClick}
+              >
+                Delete selected ({selectedCount})
+              </button>
+            )}
+          </div>
         </div>
-        <div className="toolbar-group col-picker-wrap">
+        <div className="toolbar-editing-group">
+        <div className="toolbar-group sort-group" ref={sortPickerRef}>
           <button
             type="button"
-            className="btn btn-outline"
-            onClick={() => setShowColPicker(!showColPicker)}
+            className={`toolbar-menu-trigger sort-trigger${showSortPicker ? ' active' : ''}`}
+            onClick={() => {
+              setShowSortPicker((prev) => !prev);
+              setShowFilterPicker(false);
+              setShowColPicker(false);
+            }}
+            aria-label="Open sort options"
+            title="Open sort options"
           >
-            {showColPicker ? 'Hide columns ✓' : 'Show/Hide columns'}
+            <img src={filterLetterIcon} alt="" className="toolbar-label-icon" />
+            <span className="menu-trigger-label">
+              <span className="menu-trigger-text">Sort</span>
+              <span className="menu-trigger-caret" aria-hidden="true"></span>
+            </span>
           </button>
-          {showColPicker && (
-            <div className="column-picker">
-              {COLUMNS.map((c) => (
-                <label key={c.key} className="col-picker-item">
-                  <input
-                    type="checkbox"
-                    checked={!!visibleCols[c.key]}
-                    onChange={() => toggleCol(c.key)}
-                  />
-                  {c.label}
-                </label>
-              ))}
+          {showSortPicker && (
+            <div className="sort-picker">
+              <button
+                type="button"
+                className="menu-action"
+                onClick={() => {
+                  setSortDirection('asc');
+                  setShowSortPicker(false);
+                }}
+              >
+                <span className="menu-action-glyph">A↓Z</span>
+                <span>Sort A to Z</span>
+              </button>
+              <button
+                type="button"
+                className="menu-action"
+                onClick={() => {
+                  setSortDirection('desc');
+                  setShowSortPicker(false);
+                }}
+              >
+                <span className="menu-action-glyph">Z↓A</span>
+                <span>Sort Z to A</span>
+              </button>
+              <button
+                type="button"
+                className="menu-action"
+                onClick={() => {
+                  setSortDirection('');
+                  setSortKey('');
+                  setShowSortPicker(false);
+                }}
+              >
+                <span className="menu-action-glyph">×</span>
+                <span>Remove sorting</span>
+              </button>
+              <p className="menu-note">
+                Choose a sort option, then click a sheet header.
+              </p>
+            {/* 
+            <select
+              value={sortDirection}
+              onChange={(e) => {
+                const nextDirection = e.target.value;
+                setSortDirection(nextDirection);
+                if (!nextDirection) {
+                  setSortKey('');
+                }
+                setShowSortPicker(false);
+              }}
+              className="sheet-select"
+            >
+              <option value="">Remove sorting</option>
+              <option value="asc">A → Z</option>
+              <option value="desc">Z → A</option>
+            </select>
+            */}
             </div>
           )}
         </div>
+        <div className="toolbar-group value-filter-group" ref={filterPickerRef}>
+          <button
+            type="button"
+            className={`toolbar-menu-trigger filter-trigger${showFilterPicker ? ' active' : ''}`}
+            onClick={openFilterPicker}
+            aria-label="Open filter options"
+            title="Open filter options"
+          >
+            <img src={filterDataIcon} alt="" className="toolbar-label-icon" />
+            <span className="menu-trigger-label">
+              <span className="menu-trigger-text">Filter</span>
+              <span className="menu-trigger-caret" aria-hidden="true"></span>
+            </span>
+          </button>
+          {showFilterPicker && (
+            <div className="filter-picker">
+              <div className="menu-field">
+                <label htmlFor="filter-column-select">Column</label>
+                <select
+                  id="filter-column-select"
+                  value={draftValueFilterKey}
+                  onChange={(e) => {
+                    setDraftValueFilterKey(e.target.value);
+                    setDraftValueFilter([]);
+                    setValueFilterSearch('');
+                  }}
+                  className="sheet-select"
+                >
+                  <option value="">Select column</option>
+                  {filterableColumns.map((col) => (
+                    <option key={col.key} value={col.key}>{col.label}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="menu-field">
+                <label htmlFor="filter-value-search">Value</label>
+                <input
+                  id="filter-value-search"
+                  type="text"
+                  value={valueFilterSearch}
+                  onChange={(e) => setValueFilterSearch(e.target.value)}
+                  className="sheet-search filter-value-search"
+                  placeholder="Search"
+                  disabled={!draftValueFilterKey}
+                />
+                <div
+                  className={`value-checkbox-list${!draftValueFilterKey ? ' disabled' : ''}`}
+                  aria-label="Filter values"
+                >
+                  {draftValueFilterKey && (
+                    <label className="value-checkbox-item value-checkbox-select-all">
+                      <input
+                        type="checkbox"
+                        checked={allVisibleFilterValuesSelected}
+                        disabled={visibleValueFilterOptions.length === 0}
+                        onChange={toggleAllVisibleFilterValues}
+                      />
+                      <span>(Select All)</span>
+                    </label>
+                  )}
+                  {visibleValueFilterOptions.length === 0 ? (
+                    <div className="value-checkbox-empty">
+                      {draftValueFilterKey ? 'No matching values found' : 'Select a column first.'}
+                    </div>
+                  ) : (
+                    visibleValueFilterOptions.map((option) => (
+                      <label key={option} className="value-checkbox-item">
+                        <input
+                          type="checkbox"
+                          checked={draftValueFilter.includes(option)}
+                          disabled={!draftValueFilterKey}
+                          onChange={() => {
+                            setDraftValueFilter((prev) =>
+                              prev.includes(option)
+                                ? prev.filter((item) => item !== option)
+                                : [...prev, option]
+                            );
+                          }}
+                        />
+                        <span>{option}</span>
+                      </label>
+                    ))
+                  )}
+                </div>
+              </div>
+              <div className="menu-actions-row">
+                <button
+                  type="button"
+                  className="menu-secondary"
+                  onClick={cancelFilterPicker}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  className="menu-primary"
+                  onClick={applyFilterPicker}
+                >
+                  OK
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+        <div className="toolbar-group col-picker-wrap" ref={columnPickerRef}>
+          <button
+            type="button"
+            className={`toolbar-menu-trigger btn-icon-toggle${showColPicker ? ' active' : ''}`}
+            onClick={() => {
+              setShowColPicker((prev) => !prev);
+              setShowSortPicker(false);
+              setShowFilterPicker(false);
+            }}
+            aria-label={showColPicker ? 'Hide columns' : 'Show or hide columns'}
+            title={showColPicker ? 'Hide columns' : 'Show or hide columns'}
+          >
+            <span className="menu-trigger-label">
+              <span className="menu-trigger-text">Column</span>
+              <span className="menu-trigger-caret" aria-hidden="true"></span>
+            </span>
+          </button>
+        </div>
+        <div className="toolbar-editing-title">Editing</div>
+        </div>
+        </div>
       </div>
-
+      </div>
+      {showColPicker && (
+        <div
+          ref={columnPickerMenuRef}
+          className="column-picker column-picker-floating"
+          style={{ top: `${columnPickerPos.top}px`, left: `${columnPickerPos.left}px` }}
+        >
+          {COLUMNS.map((c) => (
+            <label key={c.key} className="col-picker-item">
+              <input
+                type="checkbox"
+                checked={!!visibleCols[c.key]}
+                onChange={() => toggleCol(c.key)}
+              />
+              {c.label}
+            </label>
+          ))}
+        </div>
+      )}
       <div className="table-wrap">
         <table className="data-table">
           <thead>
@@ -706,8 +1100,18 @@ export default function DataSheet() {
               </th>
               <th className="col-actions">Actions</th>
               {visibleColumns.map((col) => (
-                <th key={col.key} style={col.width ? { width: col.width, minWidth: col.width } : undefined}>
-                  {col.label}
+                <th
+                  key={col.key}
+                  style={col.width ? { width: col.width, minWidth: col.width } : undefined}
+                  className={sortDirection ? `sortable-header${sortKey === col.key ? ' active' : ''}` : undefined}
+                  onClick={sortDirection ? () => setSortKey(col.key) : undefined}
+                  title={sortDirection ? `Sort by ${col.label}` : undefined}
+                >
+                  <span className="header-label">
+                    {col.label}
+                    {sortKey === col.key && sortDirection === 'asc' && ' ↑'}
+                    {sortKey === col.key && sortDirection === 'desc' && ' ↓'}
+                  </span>
                 </th>
               ))}
             </tr>
@@ -804,3 +1208,11 @@ export default function DataSheet() {
     </div>
   );
 }
+
+
+
+
+
+
+
+
