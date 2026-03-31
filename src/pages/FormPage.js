@@ -4,6 +4,7 @@ import { CAR_PROVINCES, CATEGORIES } from '../constants';
 import './FormPage.css';
 
 const initialValues = {
+  number: '',
   province: '',
   ancestralDomain: '',
   coverage: '',
@@ -89,7 +90,7 @@ export default function FormPage() {
     <div className="form-page">
       <header className="form-page-header">
         <h1>Ancestral Domain Application / Record</h1>
-        <p>Add or register a Cordillera Ancestral Domain entry</p>
+        <p>Add or register a record using the same headers shown in the data sheet</p>
       </header>
 
       {submitted && (
@@ -101,8 +102,18 @@ export default function FormPage() {
 
       <form onSubmit={handleSubmit} className="cad-form">
         <section className="form-section">
-          <h2>Basic Information</h2>
+          <h2>1. Core Identification</h2>
           <div className="form-grid">
+            <label>
+              No
+              <input
+                type="text"
+                name="number"
+                value={form.number}
+                onChange={handleChange}
+                placeholder="Pre-determined number"
+              />
+            </label>
             <label>
               Ancestral Domain
               <input
@@ -138,52 +149,27 @@ export default function FormPage() {
               />
             </label>
             <label>
-              Location per CADT
+              Location Per CADT
               <input
                 type="text"
                 name="locationPerCadt"
                 value={form.locationPerCadt}
                 onChange={handleChange}
-                placeholder="Location per CADT"
+                placeholder="Location Per CADT"
               />
             </label>
             <label>
-              Location
-              <input
-                type="text"
-                name="location"
-                value={form.location}
-                onChange={handleChange}
-                placeholder="Location"
-              />
-            </label>
-            <label>
-              Area (in Hectares)
+              Area (in Has)
               <input
                 type="number"
                 name="areaHas"
                 value={form.areaHas}
                 onChange={handleChange}
-                placeholder="Hectares"
+                placeholder="Area (in Has)"
                 min="0"
                 step="0.01"
               />
             </label>
-            <label className="form-check">
-              <input
-                type="checkbox"
-                name="withIndicativeMap"
-                checked={form.withIndicativeMap}
-                onChange={handleChange}
-              />
-              With Indicative Map
-            </label>
-          </div>
-        </section>
-
-        <section className="form-section">
-          <h2>Community Information</h2>
-          <div className="form-grid">
             <label>
               Name of ICCs/IPs
               <input
@@ -194,58 +180,11 @@ export default function FormPage() {
                 placeholder="Name of ICCs/IPs"
               />
             </label>
-            <label>
-              Number of Beneficiaries / Rights Holders
-              <input
-                type="number"
-                name="noBeneficiaries"
-                value={form.noBeneficiaries}
-                onChange={handleChange}
-                placeholder="Number"
-                min="0"
-              />
-            </label>
-            <label>
-              AD Representative
-              <input
-                type="text"
-                name="adRepresentative"
-                value={form.adRepresentative}
-                onChange={handleChange}
-                placeholder="AD representative"
-              />
-            </label>
           </div>
         </section>
 
         <section className="form-section">
-          <h2>Contact Information</h2>
-          <div className="form-grid">
-            <label>
-              Contact Person
-              <input
-                type="text"
-                name="contactPerson"
-                value={form.contactPerson}
-                onChange={handleChange}
-                placeholder="Contact person"
-              />
-            </label>
-            <label>
-              Contact Number
-              <input
-                type="text"
-                name="contactNumber"
-                value={form.contactNumber}
-                onChange={handleChange}
-                placeholder="Contact number"
-              />
-            </label>
-          </div>
-        </section>
-
-        <section className="form-section">
-          <h2>Application Information</h2>
+          <h2>2. Application Details</h2>
           <div className="form-grid">
             <label>
               Date of Receipt of Application
@@ -257,30 +196,47 @@ export default function FormPage() {
               />
             </label>
             <label>
-              Petition No. / Docket No. of Application
+              Petition No / Docket No
               <input
                 type="text"
                 name="petitionDocketNo"
                 value={form.petitionDocketNo}
                 onChange={handleChange}
-                placeholder="Petition/Docket no"
+                placeholder="Petition No / Docket No"
               />
             </label>
             <label>
-              CADC/CALC No. (if any)
+              CADC/CALC No (if any)
               <input
                 type="text"
                 name="cadcCalcNo"
                 value={form.cadcCalcNo}
                 onChange={handleChange}
-                placeholder="CADC/CALC no"
+                placeholder="CADC/CALC No (if any)"
               />
             </label>
           </div>
         </section>
 
         <section className="form-section">
-          <h2>CADT Approval Information</h2>
+          <h2>3. Beneficiaries</h2>
+          <div className="form-grid">
+            <label>
+              No of Beneficiaries / Rights Holders
+              <input
+                type="number"
+                name="noBeneficiaries"
+                value={form.noBeneficiaries}
+                onChange={handleChange}
+                placeholder="Number"
+                min="0"
+              />
+            </label>
+          </div>
+        </section>
+
+        <section className="form-section">
+          <h2>4. CADT Approval / Status</h2>
           <div className="form-grid">
             <label>
               CADT No. (if approved)
@@ -325,7 +281,113 @@ export default function FormPage() {
         </section>
 
         <section className="form-section">
-          <h2>ADSDPP Information</h2>
+          <h2>5. Contacts</h2>
+          <div className="form-grid">
+            <label>
+              AD Representative
+              <input
+                type="text"
+                name="adRepresentative"
+                value={form.adRepresentative}
+                onChange={handleChange}
+                placeholder="AD Representative"
+              />
+            </label>
+            <label>
+              Contact Person
+              <input
+                type="text"
+                name="contactPerson"
+                value={form.contactPerson}
+                onChange={handleChange}
+                placeholder="Contact Person"
+              />
+            </label>
+            <label>
+              Contact Number
+              <input
+                type="text"
+                name="contactNumber"
+                value={form.contactNumber}
+                onChange={handleChange}
+                placeholder="Contact Number"
+              />
+            </label>
+          </div>
+        </section>
+
+        <section className="form-section">
+          <h2>6. Funding &amp; Classification</h2>
+          <div className="form-grid">
+            <label>
+              Funding Agency | Project Cost
+              <input
+                type="text"
+                name="foundingAgencyProjectCost"
+                value={form.foundingAgencyProjectCost}
+                onChange={handleChange}
+                placeholder="Funding Agency | Project Cost"
+              />
+            </label>
+            <label>
+              Category
+              <select
+                name="category"
+                value={form.category}
+                onChange={handleChange}
+              >
+                <option value="">Select category</option>
+                {CATEGORIES.map((c) => (
+                  <option key={c} value={c}>{c}</option>
+                ))}
+              </select>
+            </label>
+          </div>
+        </section>
+
+        <section className="form-section">
+          <h2>7. Mapping</h2>
+          <div className="form-grid">
+            <label className="form-check">
+              <input
+                type="checkbox"
+                name="withIndicativeMap"
+                checked={form.withIndicativeMap}
+                onChange={handleChange}
+              />
+              With Indicative Map
+            </label>
+            <label>
+              Shapefile ID
+              <input
+                type="text"
+                name="location"
+                value={form.location}
+                onChange={handleChange}
+                placeholder="Shapefile ID"
+              />
+            </label>
+          </div>
+        </section>
+
+        <section className="form-section">
+          <h2>8. General Remarks</h2>
+          <div className="form-grid form-grid-full">
+            <label>
+              Remarks
+              <textarea
+                name="remarks"
+                value={form.remarks}
+                onChange={handleChange}
+                placeholder="Remarks"
+                rows={2}
+              />
+            </label>
+          </div>
+        </section>
+
+        <section className="form-section">
+          <h2>9. ADSDPP</h2>
           <div className="form-grid">
             <label className="form-check">
               <input
@@ -334,10 +396,10 @@ export default function FormPage() {
                 checked={form.withAdsdpp}
                 onChange={handleChange}
               />
-              With ADSDPP
+              WITH ADSDPP
             </label>
             <label>
-              ADSDPP Edition
+              Edition
               <input
                 type="text"
                 name="adsdppEdition"
@@ -411,61 +473,6 @@ export default function FormPage() {
                 value={form.adsdppRemarks}
                 onChange={handleChange}
                 placeholder="Remarks"
-              />
-            </label>
-          </div>
-        </section>
-
-        <section className="form-section">
-          <h2>Project / Administrative Information</h2>
-          <div className="form-grid">
-            <label>
-              Funding Agency / Project Cost
-              <input
-                type="text"
-                name="foundingAgencyProjectCost"
-                value={form.foundingAgencyProjectCost}
-                onChange={handleChange}
-                placeholder="Agency / cost"
-              />
-            </label>
-            <label>
-              Category
-              <select
-                name="category"
-                value={form.category}
-                onChange={handleChange}
-              >
-                <option value="">Select category</option>
-                {CATEGORIES.map((c) => (
-                  <option key={c} value={c}>{c}</option>
-                ))}
-              </select>
-            </label>
-          </div>
-        </section>
-
-        <section className="form-section">
-          <h2>Additional</h2>
-          <div className="form-grid form-grid-full">
-            <label>
-              Remarks
-              <textarea
-                name="remarks"
-                value={form.remarks}
-                onChange={handleChange}
-                placeholder="Remarks"
-                rows={2}
-              />
-            </label>
-            <label>
-              ADO list
-              <textarea
-                name="adoList"
-                value={form.adoList}
-                onChange={handleChange}
-                placeholder="ADO list"
-                rows={2}
               />
             </label>
           </div>

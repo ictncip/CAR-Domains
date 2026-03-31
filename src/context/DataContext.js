@@ -24,6 +24,8 @@ function recordFromFirestore(docSnap) {
     // Firestore Timestamps -> ISO string for date inputs
     dateReceiptApplication: data.dateReceiptApplication?.toDate?.()?.toISOString?.()?.slice(0, 10) ?? data.dateReceiptApplication ?? '',
     dateApprovedCeb: data.dateApprovedCeb?.toDate?.()?.toISOString?.()?.slice(0, 10) ?? data.dateApprovedCeb ?? '',
+    dateCommunityValidation: data.dateCommunityValidation?.toDate?.()?.toISOString?.()?.slice(0, 10) ?? data.dateCommunityValidation ?? '',
+    dateAdoptedLgu: data.dateAdoptedLgu?.toDate?.()?.toISOString?.()?.slice(0, 10) ?? data.dateAdoptedLgu ?? '',
   };
 }
 

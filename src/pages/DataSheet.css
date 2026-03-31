@@ -108,9 +108,23 @@
 }
 
 .search-group {
+  flex-direction: row;
   min-width: 0;
   width: 100%;
   max-width: none;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.search-group .sheet-search {
+  flex: 0 0 695px;
+  min-width: 180px;
+}
+
+.btn-delete-inline {
+  flex: 0 0 200px;
+  min-width: 180px;
 }
 
 
@@ -353,6 +367,7 @@
   color: #ffffff;
   border-radius: 6px;
   font-size: 0.95rem;
+  transition: border-color 160ms ease, box-shadow 160ms ease, background-color 160ms ease, transform 120ms ease;
 }
 
 .sheet-select {
@@ -430,6 +445,12 @@
 .sheet-search:focus {
   outline: none;
   border-color: #ffffff;
+  box-shadow: 0 0 0 3px rgba(184, 201, 184, 0.18);
+}
+
+.sheet-search:hover {
+  background: #323232;
+  border-color: #d6e2d6;
 }
 
 /* Column Picker */
@@ -605,12 +626,50 @@
   cursor: not-allowed;
 }
 
-.upload-success {
+.delete-action-wrap {
+  position: relative;
+  flex: 0 0 auto;
+}
+
+.upload-toast {
+  position: fixed;
+  left: 50%;
+  top: 1.25rem;
+  bottom: auto;
+  transform: translateX(-50%);
+  z-index: 1100;
+  min-width: 260px;
+  max-width: min(420px, calc(100vw - 2rem));
+  padding: 0.85rem 1rem;
+  border-radius: 10px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.18);
+  font-weight: 600;
+  animation: upload-toast-in 180ms ease-out;
+  pointer-events: none;
+}
+
+.upload-toast.success {
   background: #d4edda;
   color: #155724;
-  padding: 0.75rem 1rem;
-  border-radius: 8px;
-  margin-bottom: 1rem;
+  border: 1px solid #b8dfc3;
+}
+
+.upload-toast.error {
+  background: #fdecea;
+  color: #842029;
+  border: 1px solid #f2c7cd;
+}
+
+@keyframes upload-toast-in {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
 }
 
 .btn-delete {
@@ -622,10 +681,30 @@
   font-size: 0.9rem;
   font-weight: 600;
   cursor: pointer;
+  transition: background-color 160ms ease, box-shadow 160ms ease, transform 120ms ease, opacity 160ms ease;
 }
 
 .btn-delete:hover:not(:disabled) {
   background: #a93226;
+  box-shadow: 0 8px 18px rgba(192, 57, 43, 0.24);
+}
+
+.btn-delete:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.btn-delete:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(231, 126, 115, 0.28);
+}
+
+.btn-delete.is-inactive {
+  background: #7a3e37;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.btn-delete.is-inactive:hover {
+  background: #8a4740;
 }
 
 /* Row Action Buttons */
@@ -694,7 +773,9 @@
 
 .delete-confirm-actions {
   display: flex;
-  gap: 0.5rem;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
 }
 
 .delete-confirm-actions .btn-secondary {

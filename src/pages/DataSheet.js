@@ -23,7 +23,8 @@ const IconEdit = () => (
 );
 // Map Excel header text (normalized) to our record keys
 const HEADER_TO_KEY = {
-  'no': null,
+  'no': 'number',
+  'number': 'number',
   'province': 'province',
   'ancestral domain': 'ancestralDomain',
   'coverage': 'coverage',
@@ -38,6 +39,7 @@ const HEADER_TO_KEY = {
   'name of ic': 'nameIccsIps',
   'no. of beneficiaries': 'noBeneficiaries',
   'no of beneficiaries': 'noBeneficiaries',
+  'no of beneficiaries / rights holders': 'noBeneficiaries',
   'no of bene': 'noBeneficiaries',
   'number of beneficiaries / rights holders': 'noBeneficiaries',
   'ad representative': 'adRepresentative',
@@ -59,6 +61,10 @@ const HEADER_TO_KEY = {
   'cadc/calc no.(if any)': 'cadcCalcNo',
   'cadc/calc no': 'cadcCalcNo',
   'cadt no': 'cadtNo',
+  'cadt no. (if approved)': 'cadtNo',
+  'cadt no (if approved)': 'cadtNo',
+  'cadt no. if approved': 'cadtNo',
+  'cadt no if approved': 'cadtNo',
   'cadt no (': 'cadtNo',
   'date approved by ceb': 'dateApprovedCeb',
   '(date approv': 'dateApprovedCeb',
@@ -67,6 +73,7 @@ const HEADER_TO_KEY = {
   'ceb resolution number': 'cebResolutionNo',
   'ceb resol': 'cebResolutionNo',
   'with adsdpp': 'withAdsdpp',
+  'edition': 'adsdppEdition',
   'adsdpp edition': 'adsdppEdition',
   'adsdpp year formulated': 'adsdppYearFormulated',
   'date of community validation': 'dateCommunityValidation',
@@ -84,7 +91,9 @@ const HEADER_TO_KEY = {
   'remarks': 'remarks',
   'ado list': 'adoList',
   'with indicative map': 'withIndicativeMap',
+  'indicative map': 'withIndicativeMap',
   'with indica': 'withIndicativeMap',
+  'shapefile id': 'location',
   'location': 'location',
 };
 
@@ -148,6 +157,10 @@ function toTwoDecimals(n) {
 function parseDateCell(val) {
   if (val === undefined || val === null || val === '') return '';
   if (typeof val === 'boolean') return val ? 'true' : 'false';
+  if (val instanceof Date) {
+    if (Number.isNaN(val.getTime())) return '';
+    return val.toISOString().slice(0, 10);
+  }
   if (typeof val === 'number') {
     const excel = excelDateToYMD(val);
     return excel || String(val);
@@ -155,6 +168,7 @@ function parseDateCell(val) {
 
   const text = String(val).trim();
   if (!text) return '';
+  if (/^\d{4}-\d{2}-\d{2}$/.test(text)) return text;
   const parsed = Date.parse(text);
   if (!Number.isNaN(parsed)) return new Date(parsed).toISOString().slice(0, 10);
   return text;
@@ -180,74 +194,104 @@ function parseTextCell(val) {
   return String(val).trim();
 }
 
+function isBlankCellValue(val) {
+  return val === undefined || val === null || (typeof val === 'string' && val.trim() === '');
+}
+
+const BOOLEAN_UPLOAD_KEYS = new Set([
+  'withIndicativeMap',
+  'withAdsdpp',
+  'adsdppMoreThanFiveYears',
+]);
+
+const NUMERIC_UPLOAD_KEYS = new Set([
+  'areaHas',
+  'noBeneficiaries',
+]);
+
+const DATE_UPLOAD_KEYS = new Set([
+  'dateReceiptApplication',
+  'dateApprovedCeb',
+  'dateCommunityValidation',
+  'dateAdoptedLgu',
+]);
+
 function getColumnValue(row, col) {
   if (!col) return '';
-  if (col.key === 'no') return row?._rowNo ?? '';
+  if (col.key === 'number') return row?.number ?? '';
   const value = col.getValue ? col.getValue(row, 0) : row?.[col.key];
   return value ?? '';
 }
 
+function compareCellValues(a, b) {
+  return String(a ?? '').trim().localeCompare(String(b ?? '').trim(), undefined, {
+    numeric: true,
+    sensitivity: 'base',
+  });
+}
+
 const COLUMNS = [
-  { key: 'no', label: 'No', width: '50px', getValue: (r) => r._rowNo ?? '—' },
-  { key: 'province', label: 'Province' },
+  { key: 'number', label: 'No', width: '56px', getValue: (r) => r.number ?? '' },
+    { key: 'province', label: 'Province' },
   { key: 'ancestralDomain', label: 'Ancestral Domain' },
+  { key: 'nameIccsIps', label: 'Name of ICCs/IPs' },
   { key: 'coverage', label: 'Coverage' },
-  { key: 'locationPerCadt', label: 'Location per CADT' },
+  { key: 'locationPerCadt', label: 'Location Per CADT' },
   {
     key: 'areaHas',
-    label: 'Area (in Hectares)',
+    label: 'Area (in Has)',
     getValue: (r) => {
       const v = Number(r.areaHas);
       return Number.isFinite(v) ? v.toFixed(2) : (r.areaHas ?? '');
     },
   },
-  { key: 'nameIccsIps', label: 'Name of ICCs/IPs' },
-  { key: 'noBeneficiaries', label: 'Number of Beneficiaries / Rights Holders' },
+  { key: 'dateReceiptApplication', label: 'Date of Receipt of Application' },
+  { key: 'petitionDocketNo', label: 'Petition No / Docket No' },
+  { key: 'cadcCalcNo', label: 'CADC/CALC No (if any)' },
+  { key: 'noBeneficiaries', label: 'No of Beneficiaries / Rights Holders' },
+  { key: 'cadtNo', label: 'CADT No. (if approved)' },
+  { key: 'dateApprovedCeb', label: 'Date Approved by CEB' },
+  { key: 'yearIssued', label: 'Year Issued' },
+  { key: 'cebResolutionNo', label: 'CEB Resolution No.' },
   { key: 'adRepresentative', label: 'AD Representative' },
   { key: 'contactPerson', label: 'Contact Person' },
   { key: 'contactNumber', label: 'Contact Number' },
-  { key: 'dateReceiptApplication', label: 'Date of Receipt of Application' },
-  { key: 'petitionDocketNo', label: 'Petition No. / Docket No. of Application' },
-  { key: 'cadcCalcNo', label: 'CADC/CALC No. (if any)' },
-  { key: 'cadtNo', label: 'CADT No. (if approved)' },
-  { key: 'dateApprovedCeb', label: 'Date approved by CEB' },
-  { key: 'yearIssued', label: 'Year Issued' },
-  { key: 'cebResolutionNo', label: 'CEB Resolution No.' },
-  { key: 'withAdsdpp', label: 'With ADSDPP', getValue: (r) => r.withAdsdpp ? 'Yes' : 'No' },
-  { key: 'adsdppEdition', label: 'ADSDPP Edition' },
+  { key: 'foundingAgencyProjectCost', label: 'Funding Agency | Project Cost' },
+  { key: 'category', label: 'Category' },
+  { key: 'withIndicativeMap', label: 'Indicative Map', getValue: (r) => r.withIndicativeMap ? 'Yes' : 'No' },
+  { key: 'location', label: 'Shapefile ID' },
+  { key: 'remarks', label: 'Remarks' },
+  { key: 'withAdsdpp', label: 'WITH ADSDPP', getValue: (r) => r.withAdsdpp ? 'Yes' : 'No' },
+  { key: 'adsdppEdition', label: 'Edition' },
   { key: 'adsdppYearFormulated', label: 'ADSDPP Year Formulated' },
   { key: 'dateCommunityValidation', label: 'Date of Community Validation' },
   { key: 'dateAdoptedLgu', label: 'Date Adopted by LGU' },
   { key: 'adsdppMoreThanFiveYears', label: 'More than 5 Years', getValue: (r) => r.adsdppMoreThanFiveYears ? 'Yes' : 'No' },
-  { key: 'adsdppFiveYearPlan', label: 'ADSDPP 5-Year Plan in the Plan' },
+  { key: 'adsdppFiveYearPlan', label: 'ADSDPP 5 Year Plan in the Plan' },
   { key: 'adsdppFundingSourceYear', label: 'ADSDPP Funding Source and Year' },
   { key: 'adsdppRemarks', label: 'ADSDPP Remarks' },
-  { key: 'foundingAgencyProjectCost', label: 'Funding Agency / Project Cost' },
-  { key: 'category', label: 'Category' },
-  { key: 'remarks', label: 'Remarks' },
-  { key: 'adoList', label: 'ADO list' },
-  { key: 'withIndicativeMap', label: 'With Indicative Map', getValue: (r) => r.withIndicativeMap ? 'Yes' : 'No' },
 ];
 
 const defaultVisible = COLUMNS.reduce(
   (acc, c) => ({ ...acc, [c.key]: c.key === 'remarks' ? false : true }),
   {}
 );
+defaultVisible.number = true;
 
 const BASIC_INFO_KEYS = new Set([
-  'no',
+  'number',
   'province',
   'ancestralDomain',
+  'nameIccsIps',
   'coverage',
   'locationPerCadt',
   'areaHas',
 ]);
-const COMMUNITY_INFO_KEYS = new Set([
-  'nameIccsIps',
+const BENEFICIARY_KEYS = new Set([
   'noBeneficiaries',
-  'adRepresentative',
 ]);
 const CONTACT_INFO_KEYS = new Set([
+  'adRepresentative',
   'contactPerson',
   'contactNumber',
 ]);
@@ -273,12 +317,16 @@ const ADSDPP_INFO_KEYS = new Set([
   'adsdppFundingSourceYear',
   'adsdppRemarks',
 ]);
-const PROJECT_INFO_KEYS = new Set([
+const FUNDING_INFO_KEYS = new Set([
   'foundingAgencyProjectCost',
   'category',
-  'remarks',
-  'adoList',
+]);
+const MAPPING_INFO_KEYS = new Set([
   'withIndicativeMap',
+  'location',
+]);
+const REMARKS_INFO_KEYS = new Set([
+  'remarks',
 ]);
 
 function normalizeHeader(h) {
@@ -290,7 +338,7 @@ function normalizeHeaderLoose(h) {
 }
 
 const EXPECTED_UPLOAD_KEYS_BY_INDEX = [
-  null, // No
+  'number', // No
   'province',
   'ancestralDomain',
   'coverage',
@@ -395,7 +443,7 @@ export default function DataSheet() {
   const [deleting, setDeleting] = useState(false);
 
   const filterableColumns = useMemo(
-    () => COLUMNS.filter((col) => col.key !== 'no'),
+    () => COLUMNS.filter((col) => col.key !== 'number'),
     []
   );
 
@@ -447,7 +495,13 @@ export default function DataSheet() {
   }, [filteredByValue, search]);
 
   const sorted = useMemo(() => {
-    if (!sortKey || !sortDirection) return searched;
+    if (!sortKey || !sortDirection) {
+      return [...searched].sort((a, b) => {
+        const provinceCompare = compareCellValues(a.province, b.province);
+        if (provinceCompare !== 0) return provinceCompare;
+        return compareCellValues(a.number, b.number);
+      });
+    }
     const col = COLUMNS.find((item) => item.key === sortKey);
     if (!col) return searched;
     const direction = sortDirection === 'desc' ? -1 : 1;
@@ -455,7 +509,7 @@ export default function DataSheet() {
     return [...searched].sort((a, b) => {
       const aValue = String(getColumnValue(a, col)).trim();
       const bValue = String(getColumnValue(b, col)).trim();
-      return aValue.localeCompare(bValue, undefined, { numeric: true, sensitivity: 'base' }) * direction;
+      return compareCellValues(aValue, bValue) * direction;
     });
   }, [searched, sortDirection, sortKey]);
 
@@ -465,27 +519,37 @@ export default function DataSheet() {
   );
 
   const toggleCol = (key) => {
+    if (key === 'number') return;
     setVisibleCols((prev) => ({ ...prev, [key]: !prev[key] }));
   };
 
+  useEffect(() => {
+    if (visibleCols.number) return;
+    setVisibleCols((prev) => ({ ...prev, number: true }));
+  }, [visibleCols]);
+
   const visibleColumns = COLUMNS.filter((c) => visibleCols[c.key]);
   const basicCount = visibleColumns.filter((c) => BASIC_INFO_KEYS.has(c.key)).length;
-  const communityCount = visibleColumns.filter((c) => COMMUNITY_INFO_KEYS.has(c.key)).length;
+  const beneficiaryCount = visibleColumns.filter((c) => BENEFICIARY_KEYS.has(c.key)).length;
   const contactCount = visibleColumns.filter((c) => CONTACT_INFO_KEYS.has(c.key)).length;
   const applicationCount = visibleColumns.filter((c) => APPLICATION_INFO_KEYS.has(c.key)).length;
   const approvalCount = visibleColumns.filter((c) => CADT_APPROVAL_KEYS.has(c.key)).length;
   const adsdppCount = visibleColumns.filter((c) => ADSDPP_INFO_KEYS.has(c.key)).length;
-  const projectCount = visibleColumns.filter((c) => PROJECT_INFO_KEYS.has(c.key)).length;
+  const fundingCount = visibleColumns.filter((c) => FUNDING_INFO_KEYS.has(c.key)).length;
+  const mappingCount = visibleColumns.filter((c) => MAPPING_INFO_KEYS.has(c.key)).length;
+  const remarksCount = visibleColumns.filter((c) => REMARKS_INFO_KEYS.has(c.key)).length;
   const otherCount = Math.max(
     0,
     visibleColumns.length -
       (basicCount +
-        communityCount +
+        beneficiaryCount +
         contactCount +
         applicationCount +
         approvalCount +
-        adsdppCount +
-        projectCount)
+        fundingCount +
+        mappingCount +
+        remarksCount +
+        adsdppCount)
   );
 
   const allFilteredSelected = filtered.length > 0 && filtered.every((r) => selectedIds.has(r.id));
@@ -527,7 +591,10 @@ export default function DataSheet() {
   };
 
   const handleBulkDeleteClick = () => {
-    if (selectedCount === 0) return;
+    if (selectedCount === 0) {
+      setUploadResult({ ok: false, message: 'Select at least one record to delete.' });
+      return;
+    }
     setDeleteConfirm({ ids: Array.from(selectedIds), count: selectedCount });
   };
 
@@ -553,7 +620,6 @@ export default function DataSheet() {
     const exportData = filtered.map((row) => {
       const obj = {};
       COLUMNS.forEach((col) => {
-        if (col.key === 'no') return;
         const label = col.label;
         const val = col.getValue ? col.getValue(row, row._rowNo - 1) : row[col.key];
         obj[label] = val ?? '';
@@ -573,9 +639,14 @@ export default function DataSheet() {
     setUploading(true);
     try {
       const data = await file.arrayBuffer();
-      const wb = XLSX.read(data, { type: 'array' });
+      const wb = XLSX.read(data, { type: 'array', cellDates: true });
       const firstSheet = wb.Sheets[wb.SheetNames[0]];
-      const rows = XLSX.utils.sheet_to_json(firstSheet, { header: 1, defval: '' });
+      const rows = XLSX.utils.sheet_to_json(firstSheet, {
+        header: 1,
+        defval: '',
+        raw: false,
+        dateNF: 'yyyy-mm-dd',
+      });
       if (rows.length < 2) {
         setUploadResult({ ok: false, message: 'File has no data rows.' });
         return;
@@ -592,22 +663,16 @@ export default function DataSheet() {
           if (val === undefined || val === null) val = '';
           const existing = record[key];
           const hasExisting = existing !== undefined && existing !== null && String(existing).trim() !== '';
-          if (key === 'withIndicativeMap') {
-            record[key] = parseBooleanCell(val);
-          } else if (key === 'withAdsdpp' || key === 'adsdppMoreThanFiveYears') {
-            record[key] = parseBooleanCell(val);
+          let nextValue;
+          if (BOOLEAN_UPLOAD_KEYS.has(key)) {
+            nextValue = parseBooleanCell(val);
           } else if (key === 'areaHas') {
             const parsed = parseNumericCell(val);
-            record[key] = typeof parsed === 'number' ? toTwoDecimals(parsed) : parsed;
-          } else if (key === 'noBeneficiaries') {
-            record[key] = parseNumericCell(val);
-          } else if (
-            key === 'dateReceiptApplication' ||
-            key === 'dateApprovedCeb' ||
-            key === 'dateCommunityValidation' ||
-            key === 'dateAdoptedLgu'
-          ) {
-            record[key] = parseDateCell(val);
+            nextValue = typeof parsed === 'number' ? toTwoDecimals(parsed) : parsed;
+          } else if (NUMERIC_UPLOAD_KEYS.has(key)) {
+            nextValue = parseNumericCell(val);
+          } else if (DATE_UPLOAD_KEYS.has(key)) {
+            nextValue = parseDateCell(val);
           } else if (key === 'petitionDocketNo') {
             const text = parseTextCell(val);
             if (!text) return;
@@ -616,9 +681,13 @@ export default function DataSheet() {
             } else if (!hasExisting) {
               record[key] = text;
             }
+            return;
           } else {
-            record[key] = parseTextCell(val);
+            nextValue = parseTextCell(val);
           }
+
+          if (hasExisting && isBlankCellValue(nextValue)) return;
+          record[key] = nextValue;
         });
         if (Object.keys(record).length > 0) recordsToAdd.push(record);
       }
@@ -735,6 +804,16 @@ export default function DataSheet() {
     };
   }, [showColPicker, updateColumnPickerPosition]);
 
+  useEffect(() => {
+    if (!uploadResult) return undefined;
+
+    const timeoutId = window.setTimeout(() => {
+      setUploadResult(null);
+    }, 3000);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [uploadResult]);
+
   return (
     <div className="data-sheet-page">
       {dataError && (
@@ -751,12 +830,6 @@ export default function DataSheet() {
         onChange={handleUpload}
         style={{ display: 'none' }}
       />
-
-      {uploadResult && (
-        <div className={uploadResult.ok ? 'upload-success' : 'data-sheet-error'}>
-          {uploadResult.ok ? `Uploaded ${uploadResult.count} record(s).` : uploadResult.message}
-        </div>
-      )}
 
       <div className="data-sheet-toolbar-scroll">
       <div className="data-sheet-toolbar">
@@ -781,7 +854,22 @@ export default function DataSheet() {
               </button>
             ))}
           </div>
-          <div className="toolbar-group search-group">
+          <div className="toolbar-group search-group has-delete-action">
+            <div className="delete-action-wrap">
+              {uploadResult && (
+                <div className={`upload-toast${uploadResult.ok ? ' success' : ' error'}`} role="status" aria-live="polite">
+                  {uploadResult.ok ? `Uploaded ${uploadResult.count} record(s).` : uploadResult.message}
+                </div>
+              )}
+            <button
+              type="button"
+              className={`btn btn-delete btn-delete-inline${selectedCount === 0 ? ' is-inactive' : ''}`}
+              onClick={handleBulkDeleteClick}
+              aria-disabled={selectedCount === 0}
+            >
+              Delete selected ({selectedCount})
+            </button>
+            </div>
             <input
               type="text"
               placeholder="Search across all columns..."
@@ -823,15 +911,6 @@ export default function DataSheet() {
               </button>
               <div className="toolbar-spreadsheet-title">Spreadsheet</div>
             </div>
-            {selectedCount > 0 && (
-              <button
-                type="button"
-                className="btn btn-delete"
-                onClick={handleBulkDeleteClick}
-              >
-                Delete selected ({selectedCount})
-              </button>
-            )}
           </div>
         </div>
         <div className="toolbar-editing-group">
@@ -1052,6 +1131,7 @@ export default function DataSheet() {
                 type="checkbox"
                 checked={!!visibleCols[c.key]}
                 onChange={() => toggleCol(c.key)}
+                disabled={c.key === 'number'}
               />
               {c.label}
             </label>
@@ -1064,25 +1144,31 @@ export default function DataSheet() {
             <tr>
               <th className="col-group-spacer" colSpan={2} aria-hidden="true"></th>
               {basicCount > 0 && (
-                <th className="col-group-header" colSpan={basicCount}>1. Basic Information</th>
-              )}
-              {communityCount > 0 && (
-                <th className="col-group-header" colSpan={communityCount}>2. Community Information</th>
-              )}
-              {contactCount > 0 && (
-                <th className="col-group-header" colSpan={contactCount}>3. Contact Information</th>
+                <th className="col-group-header" colSpan={basicCount}>1. Core Identification</th>
               )}
               {applicationCount > 0 && (
-                <th className="col-group-header" colSpan={applicationCount}>4. Application Information</th>
+                <th className="col-group-header" colSpan={applicationCount}>2. Application Details</th>
+              )}
+              {beneficiaryCount > 0 && (
+                <th className="col-group-header" colSpan={beneficiaryCount}>3. Beneficiaries</th>
               )}
               {approvalCount > 0 && (
-                <th className="col-group-header" colSpan={approvalCount}>5. CADT Approval Information</th>
+                <th className="col-group-header" colSpan={approvalCount}>4. CADT Approval / Status</th>
+              )}
+              {contactCount > 0 && (
+                <th className="col-group-header" colSpan={contactCount}>5. Contacts</th>
+              )}
+              {fundingCount > 0 && (
+                <th className="col-group-header" colSpan={fundingCount}>6. Funding &amp; Classification</th>
+              )}
+              {mappingCount > 0 && (
+                <th className="col-group-header" colSpan={mappingCount}>7. Mapping</th>
+              )}
+              {remarksCount > 0 && (
+                <th className="col-group-header" colSpan={remarksCount}>8. General Remarks</th>
               )}
               {adsdppCount > 0 && (
-                <th className="col-group-header" colSpan={adsdppCount}>6. ADSDPP Information</th>
-              )}
-              {projectCount > 0 && (
-                <th className="col-group-header" colSpan={projectCount}>7. Project / Administrative Information</th>
+                <th className="col-group-header" colSpan={adsdppCount}>9. ADSDPP</th>
               )}
               {otherCount > 0 && (
                 <th className="col-group-spacer" colSpan={otherCount} aria-hidden="true"></th>

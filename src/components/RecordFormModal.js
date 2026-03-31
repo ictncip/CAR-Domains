@@ -4,13 +4,14 @@ import { CAR_PROVINCES, CATEGORIES } from '../constants';
 import './RecordFormModal.css';
 
 const FIELDS = [
+  { key: 'number', label: 'No', type: 'text' },
   { key: 'province', label: 'Province', type: 'select', options: CAR_PROVINCES },
   { key: 'ancestralDomain', label: 'Ancestral Domain', type: 'text' },
   { key: 'coverage', label: 'Coverage', type: 'text' },
   { key: 'locationPerCadt', label: 'Location per CADT', type: 'text' },
-  { key: 'location', label: 'Location', type: 'text' },
+  { key: 'location', label: 'Shapefile ID', type: 'text' },
   { key: 'areaHas', label: 'Area (in Hectares)', type: 'number' },
-  { key: 'withIndicativeMap', label: 'With Indicative Map', type: 'checkbox' },
+  { key: 'withIndicativeMap', label: 'Indicative Map', type: 'checkbox' },
   { key: 'dateReceiptApplication', label: 'Date of Receipt of Application', type: 'date' },
   { key: 'petitionDocketNo', label: 'Petition No. / Docket No. of Application', type: 'text' },
   { key: 'cadcCalcNo', label: 'CADC/CALC No. (if any)', type: 'text' },
