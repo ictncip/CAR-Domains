@@ -81,13 +81,18 @@
 /* Province Buttons */
 .province-buttons {
   display: flex;
-  flex-wrap: wrap;
-  gap: 0.41rem;
+  flex-wrap: nowrap;
+  gap: 0.35rem;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding-bottom: 0.15rem;
+  scrollbar-width: thin;
 }
 
 .province-buttons button {
-  min-width: 105px;
-  padding: 0.36rem 0.5rem;
+  flex: 0 0 auto;
+  min-width: 88px;
+  padding: 0.36rem 0.45rem;
   border: 1px solid #b8c9b8;
   background: #fff;
   border-radius: 6px;
@@ -118,8 +123,9 @@
 }
 
 .search-group .sheet-search {
-  flex: 0 0 695px;
+  flex: 0 0 520px;
   min-width: 180px;
+  max-width: 100%;
 }
 
 .btn-delete-inline {

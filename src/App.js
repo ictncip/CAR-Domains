@@ -13,7 +13,7 @@ function ProtectedRoute({ children }) {
   if (authLoading) {
     return (
       <div className="app-loading">
-        <p>Loading…</p>
+        <p>Loading...</p>
       </div>
     );
   }

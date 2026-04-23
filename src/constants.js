@@ -2,11 +2,11 @@
 export const CAR_PROVINCES = [
   'Abra',
   'Apayao',
+  'Baguio City',
   'Benguet',
   'Ifugao',
   'Kalinga',
   'Mountain Province',
-  'Baguio City',
 ];
 
 export const CATEGORIES = [

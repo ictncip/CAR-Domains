@@ -3,6 +3,11 @@ import { useData } from '../context/DataContext';
 import { CAR_PROVINCES, CATEGORIES } from '../constants';
 import './FormPage.css';
 
+const ADSDPP_EDITION_OPTIONS = [
+  { value: '1st Edition', label: '1st Edition' },
+  { value: '2nd Edition', label: '2nd Edition' },
+];
+
 const initialValues = {
   number: '',
   province: '',
@@ -400,13 +405,18 @@ export default function FormPage() {
             </label>
             <label>
               Edition
-              <input
-                type="text"
+              <select
                 name="adsdppEdition"
                 value={form.adsdppEdition}
                 onChange={handleChange}
-                placeholder="Edition"
-              />
+              >
+                <option value=""></option>
+                {ADSDPP_EDITION_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
             </label>
             <label>
               ADSDPP Year Formulated
@@ -480,7 +490,7 @@ export default function FormPage() {
 
         <div className="form-actions">
           <button type="submit" className="btn btn-primary" disabled={submitting}>
-            {submitting ? 'Saving…' : 'Save Record'}
+            {submitting ? 'Saving...' : 'Save Record'}
           </button>
           <button type="button" className="btn btn-secondary" onClick={resetForm}>
             Reset Form

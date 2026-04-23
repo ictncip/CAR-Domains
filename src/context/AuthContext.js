@@ -2,9 +2,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import {
   onAuthStateChanged,
   signInWithEmailAndPassword,
-  createUserWithEmailAndPassword,
   signOut as firebaseSignOut,
-  updateProfile,
 } from 'firebase/auth';
 import { auth } from '../firebase';
 
@@ -26,13 +24,6 @@ export function AuthProvider({ children }) {
     await signInWithEmailAndPassword(auth, email, password);
   };
 
-  const signUp = async (email, password, displayName) => {
-    const { user: newUser } = await createUserWithEmailAndPassword(auth, email, password);
-    if (displayName && newUser) {
-      await updateProfile(newUser, { displayName });
-    }
-  };
-
   const logout = () => {
     return firebaseSignOut(auth);
   };
@@ -43,7 +34,6 @@ export function AuthProvider({ children }) {
         user,
         authLoading,
         login,
-        signUp,
         logout,
         isAuthenticated: !!user,
       }}

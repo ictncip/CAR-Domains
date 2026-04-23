@@ -3,6 +3,8 @@ import { useData } from '../context/DataContext';
 import { CAR_PROVINCES, CATEGORIES } from '../constants';
 import './RecordFormModal.css';
 
+const ADSDPP_EDITION_OPTIONS = ['1st Edition', '2nd Edition'];
+
 const FIELDS = [
   { key: 'number', label: 'No', type: 'text' },
   { key: 'province', label: 'Province', type: 'select', options: CAR_PROVINCES },
@@ -25,7 +27,7 @@ const FIELDS = [
   { key: 'yearIssued', label: 'Year Issued', type: 'text' },
   { key: 'cebResolutionNo', label: 'CEB Resolution No.', type: 'text' },
   { key: 'withAdsdpp', label: 'With ADSDPP', type: 'checkbox' },
-  { key: 'adsdppEdition', label: 'ADSDPP Edition', type: 'text' },
+  { key: 'adsdppEdition', label: 'ADSDPP Edition', type: 'select', options: ADSDPP_EDITION_OPTIONS },
   { key: 'adsdppYearFormulated', label: 'ADSDPP Year Formulated', type: 'text' },
   { key: 'dateCommunityValidation', label: 'Date of Community Validation', type: 'date' },
   { key: 'dateAdoptedLgu', label: 'Date Adopted by LGU', type: 'date' },
@@ -102,7 +104,7 @@ export default function RecordFormModal({ record, mode, onClose, onSaved }) {
         <div className="record-modal-header">
           <h2>{readOnly ? 'View Record' : 'Edit Record'}</h2>
           <button type="button" className="record-modal-close" onClick={onClose} aria-label="Close">
-            ×
+            x
           </button>
         </div>
         {error && <div className="record-modal-error">{error}</div>}
@@ -118,7 +120,7 @@ export default function RecordFormModal({ record, mode, onClose, onSaved }) {
                     onChange={handleChange}
                     disabled={readOnly}
                   >
-                    <option value="">—</option>
+                    <option value="">-</option>
                     {(f.options || []).map((o) => (
                       <option key={o} value={o}>{o}</option>
                     ))}
@@ -160,7 +162,7 @@ export default function RecordFormModal({ record, mode, onClose, onSaved }) {
             ) : (
               <>
                 <button type="submit" className="btn btn-primary" disabled={saving}>
-                  {saving ? 'Saving…' : 'Save'}
+                  {saving ? 'Saving...' : 'Save'}
                 </button>
                 <button type="button" className="btn btn-secondary" onClick={onClose}>
                   Cancel

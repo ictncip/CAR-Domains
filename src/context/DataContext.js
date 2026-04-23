@@ -15,17 +15,35 @@ const COLLECTION_NAME = 'records';
 
 const DataContext = createContext(null);
 
+function formatDateInputValue(date) {
+  if (!(date instanceof Date) || Number.isNaN(date.getTime())) return '';
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function toInputDateValue(value) {
+  if (!value) return '';
+  if (typeof value?.toDate === 'function') {
+    return formatDateInputValue(value.toDate());
+  }
+  if (value instanceof Date) {
+    return formatDateInputValue(value);
+  }
+  return value;
+}
+
 function recordFromFirestore(docSnap) {
   const data = docSnap.data();
   if (!data) return null;
   return {
     id: docSnap.id,
     ...data,
-    // Firestore Timestamps -> ISO string for date inputs
-    dateReceiptApplication: data.dateReceiptApplication?.toDate?.()?.toISOString?.()?.slice(0, 10) ?? data.dateReceiptApplication ?? '',
-    dateApprovedCeb: data.dateApprovedCeb?.toDate?.()?.toISOString?.()?.slice(0, 10) ?? data.dateApprovedCeb ?? '',
-    dateCommunityValidation: data.dateCommunityValidation?.toDate?.()?.toISOString?.()?.slice(0, 10) ?? data.dateCommunityValidation ?? '',
-    dateAdoptedLgu: data.dateAdoptedLgu?.toDate?.()?.toISOString?.()?.slice(0, 10) ?? data.dateAdoptedLgu ?? '',
+    dateReceiptApplication: toInputDateValue(data.dateReceiptApplication),
+    dateApprovedCeb: toInputDateValue(data.dateApprovedCeb),
+    dateCommunityValidation: toInputDateValue(data.dateCommunityValidation),
+    dateAdoptedLgu: toInputDateValue(data.dateAdoptedLgu),
   };
 }
 

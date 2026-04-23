@@ -70,6 +70,8 @@ const HEADER_TO_KEY = {
   '(date approv': 'dateApprovedCeb',
   'year issued': 'yearIssued',
   'year issue': 'yearIssued',
+  'ceb resolution no.': 'cebResolutionNo',
+  'ceb resolution no': 'cebResolutionNo',
   'ceb resolution number': 'cebResolutionNo',
   'ceb resol': 'cebResolutionNo',
   'with adsdpp': 'withAdsdpp',
@@ -154,12 +156,61 @@ function toTwoDecimals(n) {
   return Math.round(num * 100) / 100;
 }
 
+function formatAdsdppEdition(value) {
+  const normalized = String(value ?? '')
+    .trim()
+    .toLowerCase()
+    .replace(/\./g, '')
+    .replace(/\s+/g, ' ');
+
+  if (!normalized) return '';
+  if (normalized.startsWith('1') || normalized.includes('first')) return '1st Edition';
+  if (normalized.startsWith('2') || normalized.includes('second')) return '2nd Edition';
+
+  return '';
+}
+
+function formatDateYMD(date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function parseSlashDate(text) {
+  const match = text.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{2,4})$/);
+  if (!match) return '';
+
+  let [, monthText, dayText, yearText] = match;
+  const month = Number(monthText);
+  const day = Number(dayText);
+  let year = Number(yearText);
+
+  if (!Number.isFinite(month) || !Number.isFinite(day) || !Number.isFinite(year)) {
+    return '';
+  }
+  if (year < 100) {
+    year += year >= 70 ? 1900 : 2000;
+  }
+
+  const parsed = new Date(year, month - 1, day);
+  if (
+    parsed.getFullYear() !== year ||
+    parsed.getMonth() !== month - 1 ||
+    parsed.getDate() !== day
+  ) {
+    return '';
+  }
+
+  return formatDateYMD(parsed);
+}
+
 function parseDateCell(val) {
   if (val === undefined || val === null || val === '') return '';
   if (typeof val === 'boolean') return val ? 'true' : 'false';
   if (val instanceof Date) {
     if (Number.isNaN(val.getTime())) return '';
-    return val.toISOString().slice(0, 10);
+    return formatDateYMD(val);
   }
   if (typeof val === 'number') {
     const excel = excelDateToYMD(val);
@@ -169,8 +220,10 @@ function parseDateCell(val) {
   const text = String(val).trim();
   if (!text) return '';
   if (/^\d{4}-\d{2}-\d{2}$/.test(text)) return text;
+  const slashDate = parseSlashDate(text);
+  if (slashDate) return slashDate;
   const parsed = Date.parse(text);
-  if (!Number.isNaN(parsed)) return new Date(parsed).toISOString().slice(0, 10);
+  if (!Number.isNaN(parsed)) return formatDateYMD(new Date(parsed));
   return text;
 }
 
@@ -192,6 +245,11 @@ function parseTextCell(val) {
   if (typeof val === 'boolean') return val ? 'true' : 'false';
   if (typeof val === 'number') return Number.isFinite(val) ? String(val) : '';
   return String(val).trim();
+}
+
+function hasValidNumbering(val) {
+  const text = parseTextCell(val);
+  return text !== '' && /\d/.test(text);
 }
 
 function isBlankCellValue(val) {
@@ -230,6 +288,21 @@ function compareCellValues(a, b) {
   });
 }
 
+function normalizeSignatureValue(val) {
+  if (val === undefined || val === null) return '';
+  if (typeof val === 'boolean') return val ? 'true' : 'false';
+  if (typeof val === 'number') {
+    return Number.isFinite(val) ? String(val) : '';
+  }
+  return String(val).trim().replace(/\s+/g, ' ').toLowerCase();
+}
+
+function buildRecordSignature(record) {
+  return UPLOAD_RECORD_KEYS
+    .map((key) => `${key}:${normalizeSignatureValue(record?.[key])}`)
+    .join('|');
+}
+
 const COLUMNS = [
   { key: 'number', label: 'No', width: '56px', getValue: (r) => r.number ?? '' },
     { key: 'province', label: 'Province' },
@@ -262,7 +335,7 @@ const COLUMNS = [
   { key: 'location', label: 'Shapefile ID' },
   { key: 'remarks', label: 'Remarks' },
   { key: 'withAdsdpp', label: 'WITH ADSDPP', getValue: (r) => r.withAdsdpp ? 'Yes' : 'No' },
-  { key: 'adsdppEdition', label: 'Edition' },
+  { key: 'adsdppEdition', label: 'Edition', getValue: (r) => formatAdsdppEdition(r.adsdppEdition) },
   { key: 'adsdppYearFormulated', label: 'ADSDPP Year Formulated' },
   { key: 'dateCommunityValidation', label: 'Date of Community Validation' },
   { key: 'dateAdoptedLgu', label: 'Date Adopted by LGU' },
@@ -372,6 +445,10 @@ const EXPECTED_UPLOAD_KEYS_BY_INDEX = [
   'withIndicativeMap',
   'location',
 ];
+
+const UPLOAD_RECORD_KEYS = Array.from(
+  new Set(EXPECTED_UPLOAD_KEYS_BY_INDEX.filter(Boolean))
+);
 
 const LOOSE_HEADER_TO_KEY = Object.entries(HEADER_TO_KEY).reduce((acc, [header, key]) => {
   acc[normalizeHeaderLoose(header)] = key;
@@ -518,6 +595,11 @@ export default function DataSheet() {
     [sorted]
   );
 
+  const existingRecordSignatures = useMemo(
+    () => new Set(records.map((record) => buildRecordSignature(record))),
+    [records]
+  );
+
   const toggleCol = (key) => {
     if (key === 'number') return;
     setVisibleCols((prev) => ({ ...prev, [key]: !prev[key] }));
@@ -654,8 +736,21 @@ export default function DataSheet() {
       const headerRowIndex = detectHeaderRowIndex(rows);
       const uploadKeys = getUploadKeysForRow(rows[headerRowIndex]);
       const recordsToAdd = [];
+      const invalidNumberRows = [];
+      const duplicateRows = [];
+      const seenUploadSignatures = new Set();
       for (let i = headerRowIndex + 1; i < rows.length; i++) {
         const row = rows[i];
+        const hasAnyContent = row.some((cell) => !isBlankCellValue(cell));
+        if (!hasAnyContent) continue;
+
+        const numberColumnIndex = uploadKeys.findIndex((key) => key === 'number');
+        const rawNumberValue = numberColumnIndex >= 0 ? row[numberColumnIndex] : '';
+        if (!hasValidNumbering(rawNumberValue)) {
+          invalidNumberRows.push(i + 1);
+          continue;
+        }
+
         const record = {};
         uploadKeys.forEach((key, j) => {
           if (!key) return;
@@ -689,18 +784,83 @@ export default function DataSheet() {
           if (hasExisting && isBlankCellValue(nextValue)) return;
           record[key] = nextValue;
         });
-        if (Object.keys(record).length > 0) recordsToAdd.push(record);
+        if (Object.keys(record).length > 0) {
+          const signature = buildRecordSignature(record);
+          if (existingRecordSignatures.has(signature) || seenUploadSignatures.has(signature)) {
+            duplicateRows.push(i + 1);
+            continue;
+          }
+          seenUploadSignatures.add(signature);
+          recordsToAdd.push(record);
+        }
+      }
+      if (duplicateRows.length > 0) {
+        const previewRows = duplicateRows.slice(0, 5).join(', ');
+        const suffix = duplicateRows.length > 5 ? ', ...' : '';
+        const shouldContinue = window.confirm(
+          `Duplicate row(s) found in the Excel file or existing records: ${previewRows}${suffix}.\n\nPress OK to import only the non-duplicate rows, or Cancel to stop this upload.`
+        );
+        if (!shouldContinue) {
+          setUploadResult({
+            ok: false,
+            message: `Upload canceled. Duplicate row(s) found: ${previewRows}${suffix}.`,
+          });
+          if (fileInputRef.current) fileInputRef.current.value = '';
+          return;
+        }
       }
       if (recordsToAdd.length === 0) {
+        if (duplicateRows.length > 0) {
+          const previewRows = duplicateRows.slice(0, 5).join(', ');
+          const suffix = duplicateRows.length > 5 ? ', ...' : '';
+          setUploadResult({
+            ok: false,
+            message: `No rows were imported. All detected rows were duplicates: ${previewRows}${suffix}.`,
+          });
+          return;
+        }
+        if (invalidNumberRows.length > 0) {
+          const previewRows = invalidNumberRows.slice(0, 5).join(', ');
+          const suffix = invalidNumberRows.length > 5 ? ', ...' : '';
+          setUploadResult({
+            ok: false,
+            message: `No rows were imported. The skipped row(s) have no number in the "No" column: ${previewRows}${suffix}.`,
+          });
+          return;
+        }
         setUploadResult({ ok: false, message: 'No valid rows found in the uploaded file.' });
         return;
       }
       await addRecords(recordsToAdd);
-      setUploadResult({ ok: true, count: recordsToAdd.length });
+      if (duplicateRows.length > 0 || invalidNumberRows.length > 0) {
+        const details = [];
+        if (duplicateRows.length > 0) {
+          const duplicatePreview = duplicateRows.slice(0, 5).join(', ');
+          const duplicateSuffix = duplicateRows.length > 5 ? ', ...' : '';
+          details.push(
+            `Skipped ${duplicateRows.length} duplicate row(s): ${duplicatePreview}${duplicateSuffix}.`
+          );
+        }
+        const previewRows = invalidNumberRows.slice(0, 5).join(', ');
+        const suffix = invalidNumberRows.length > 5 ? ', ...' : '';
+        if (invalidNumberRows.length > 0) {
+          details.push(
+            `Skipped ${invalidNumberRows.length} row(s) with no number in the "No" column: ${previewRows}${suffix}.`
+          );
+        }
+        setUploadResult({
+          ok: true,
+          count: recordsToAdd.length,
+          message: `Uploaded ${recordsToAdd.length} record(s). ${details.join(' ')}`,
+        });
+      } else {
+        setUploadResult({ ok: true, count: recordsToAdd.length });
+      }
       if (fileInputRef.current) fileInputRef.current.value = '';
     } catch (err) {
       setUploadResult({ ok: false, message: err?.message ?? 'Upload failed.' });
     } finally {
+      if (fileInputRef.current) fileInputRef.current.value = '';
       setUploading(false);
     }
   };
@@ -850,7 +1010,7 @@ export default function DataSheet() {
                 className={provinceFilter === p ? 'active' : ''}
                 onClick={() => setProvinceFilter(p)}
               >
-                {p === 'Mountain Province' ? 'Mt.Province' : p}
+                {p === 'Mountain Province' ? 'Mt. Province' : p}
               </button>
             ))}
           </div>
@@ -858,7 +1018,7 @@ export default function DataSheet() {
             <div className="delete-action-wrap">
               {uploadResult && (
                 <div className={`upload-toast${uploadResult.ok ? ' success' : ' error'}`} role="status" aria-live="polite">
-                  {uploadResult.ok ? `Uploaded ${uploadResult.count} record(s).` : uploadResult.message}
+                  {uploadResult.message ?? (uploadResult.ok ? `Uploaded ${uploadResult.count} record(s).` : 'Upload failed.')}
                 </div>
               )}
             <button
@@ -893,7 +1053,7 @@ export default function DataSheet() {
               >
                 <img src={excelImportIcon} alt="" className="toolbar-label-icon" />
                 <span className="menu-trigger-label">
-                  <span className="menu-trigger-text">{uploading ? 'Importing…' : 'Import'}</span>
+                  <span className="menu-trigger-text">{uploading ? 'Importing...' : 'Import'}</span>
                 </span>
               </button>
               <button
@@ -942,7 +1102,7 @@ export default function DataSheet() {
                   setShowSortPicker(false);
                 }}
               >
-                <span className="menu-action-glyph">A↓Z</span>
+                <span className="menu-action-glyph">A-Z</span>
                 <span>Sort A to Z</span>
               </button>
               <button
@@ -953,7 +1113,7 @@ export default function DataSheet() {
                   setShowSortPicker(false);
                 }}
               >
-                <span className="menu-action-glyph">Z↓A</span>
+                <span className="menu-action-glyph">Z-A</span>
                 <span>Sort Z to A</span>
               </button>
               <button
@@ -965,7 +1125,7 @@ export default function DataSheet() {
                   setShowSortPicker(false);
                 }}
               >
-                <span className="menu-action-glyph">×</span>
+                <span className="menu-action-glyph">x</span>
                 <span>Remove sorting</span>
               </button>
               <p className="menu-note">
@@ -1195,8 +1355,8 @@ export default function DataSheet() {
                 >
                   <span className="header-label">
                     {col.label}
-                    {sortKey === col.key && sortDirection === 'asc' && ' ↑'}
-                    {sortKey === col.key && sortDirection === 'desc' && ' ↓'}
+                    {sortKey === col.key && sortDirection === 'asc' && ' ^'}
+                    {sortKey === col.key && sortDirection === 'desc' && ' v'}
                   </span>
                 </th>
               ))}
@@ -1244,7 +1404,7 @@ export default function DataSheet() {
                     <td key={col.key}>
                       {col.getValue
                         ? col.getValue(row, row._rowNo - 1)
-                        : row[col.key] ?? '—'}
+                        : row[col.key] ?? '-'}
                     </td>
                   ))}
                 </tr>
@@ -1273,7 +1433,7 @@ export default function DataSheet() {
                 onClick={confirmDelete}
                 disabled={deleting}
               >
-                {deleting ? 'Deleting…' : 'Delete'}
+                {deleting ? 'Deleting...' : 'Delete'}
               </button>
               <button
                 type="button"
